@@ -83,6 +83,39 @@ test("classifyCommand fails closed when evaluate rejects", async () => {
   assert.match(record.reasons[0], /classifier failure/);
 });
 
+test("classifyCommand fails closed on a non-JEV response model", async () => {
+  const record = await classifyCommand(["ls"], {
+    evaluate: async () => ({
+      model: "gpt-4o",
+      answers: {
+        command_permission: {
+          choice: "allow",
+          confidence: 1.0,
+          probabilities: { allow: 1.0, prompt: 0.0, forbidden: 0.0 },
+        },
+      },
+    }),
+  });
+  assert.equal(record.decision, PROMPT);
+  assert.match(record.reasons[0], /classifier failure/);
+});
+
+test("classifyCommand fails closed when response omits model", async () => {
+  const record = await classifyCommand(["git", "status"], {
+    evaluate: async () => ({
+      answers: {
+        command_permission: {
+          choice: "allow",
+          confidence: 1.0,
+          probabilities: { allow: 1.0, prompt: 0.0, forbidden: 0.0 },
+        },
+      },
+    }),
+  });
+  assert.equal(record.decision, PROMPT);
+  assert.match(record.reasons[0], /classifier failure/);
+});
+
 test("malformed probabilities fail closed", () => {
   const cases = [
     { allow: 1.0, forbidden: Number.NaN },

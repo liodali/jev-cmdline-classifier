@@ -33,10 +33,19 @@ export {
   DEFAULT_MODEL,
   DEFAULT_RETRIES,
   DEFAULT_TIMEOUT_MS,
+  ENDPOINT_ENV,
+  GENERIC_KEY_ENV,
+  JEV_MODEL_PREFIX,
+  MODEL_ENV,
+  PROVIDER_ENV,
+  PROVIDERS,
   TypeSafeAuthError,
   TypeSafeError,
   apiKeyFromEnv,
   evaluate,
+  resolveKey,
+  resolveProvider,
+  validateJevModel,
 } from "./client.mjs";
 
 export { main } from "./cli.mjs";

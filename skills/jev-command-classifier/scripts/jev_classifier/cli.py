@@ -35,7 +35,7 @@ from .classifier import (
     redact_argv,
     split_simple,
 )
-from .client import DEFAULT_ENDPOINT, DEFAULT_MODEL, DEFAULT_TIMEOUT
+from .client import PROVIDERS, DEFAULT_TIMEOUT, TypeSafeError, resolve_provider
 
 EXIT_CODES = {ALLOW: 0, PROMPT: 1, FORBIDDEN: 2}
 
@@ -280,8 +280,23 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="DECISION:PATTERN",
         help="matched execpolicy rule, repeatable (for example allow:git status)",
     )
-    parser.add_argument("--model", default=DEFAULT_MODEL)
-    parser.add_argument("--endpoint", default=DEFAULT_ENDPOINT)
+    parser.add_argument(
+        "--model",
+        help="JEV model id beginning with jev- (default: jev-latest, or $JEV_MODEL)",
+    )
+    parser.add_argument("--endpoint", help="override the provider endpoint (or $JEV_ENDPOINT)")
+    parser.add_argument(
+        "--provider",
+        choices=sorted(PROVIDERS),
+        default=None,
+        help="provider: typesafe (default) or systemone-compatible JEV gateway (default: $JEV_PROVIDER)",
+    )
+    parser.add_argument(
+        "--api-key-env",
+        default=None,
+        metavar="ENV_VAR",
+        help="name of the environment variable holding the API key (default: JEV_API_KEY or the provider's variable; pass `none` for keyless endpoints)",
+    )
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT)
     parser.add_argument("--no-retry", action="store_true")
     parser.add_argument(
@@ -343,6 +358,18 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     threshold_error = _threshold_error(args)
     if threshold_error:
         parser.error(threshold_error)
+
+    if not args.offline:
+        # Fail fast on provider misconfiguration instead of at request time.
+        try:
+            resolve_provider(
+                provider=args.provider,
+                model=args.model,
+                endpoint=args.endpoint,
+                api_key_env=args.api_key_env,
+            )
+        except TypeSafeError as exc:
+            parser.error(str(exc))
 
     if args.command and args.argv:
         parser.error("pass either --command or trailing argv, not both")
@@ -414,6 +441,8 @@ def _evaluate(state, questions, args):
         questions,
         model=args.model,
         endpoint=args.endpoint,
+        provider=args.provider,
+        api_key_env=args.api_key_env,
         timeout=args.timeout,
         retries=0 if args.no_retry else 2,
     )

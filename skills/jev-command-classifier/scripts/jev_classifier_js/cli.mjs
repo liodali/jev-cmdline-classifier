@@ -30,7 +30,7 @@ import {
   redactArgv,
   splitSimple,
 } from "./classifier.mjs";
-import { DEFAULT_ENDPOINT, DEFAULT_MODEL, DEFAULT_TIMEOUT_MS } from "./client.mjs";
+import { DEFAULT_TIMEOUT_MS, PROVIDERS, TypeSafeError, resolveProvider } from "./client.mjs";
 
 const EXIT_CODES = { [ALLOW]: 0, [PROMPT]: 1, [FORBIDDEN]: 2 };
 
@@ -55,8 +55,13 @@ Options:
   --sandbox <mode>          Codex sandbox mode (default: $CODEX_SANDBOX_MODE)
   --network <on|off|unknown>
   --matched-rule <d:pattern>  matched execpolicy rule, repeatable
-  --model <name>            TypeSafe model (default: ${DEFAULT_MODEL})
-  --endpoint <url>          TypeSafe endpoint (default: ${DEFAULT_ENDPOINT})
+  --provider <name>         typesafe (default) or systemone-compatible
+                            JEV gateway (default: $JEV_PROVIDER)
+  --model <name>            JEV model id beginning with jev- (default: jev-latest,
+                            or $JEV_MODEL)
+  --endpoint <url>          override the provider endpoint ($JEV_ENDPOINT)
+  --api-key-env <name>      env var holding the API key (default: JEV_API_KEY
+                            or the provider's variable; "none" for keyless)
   --timeout <seconds>       request timeout (default: ${DEFAULT_TIMEOUT_MS / 1000})
   --no-retry                disable transient-failure retries
   --confidence-floor <n>    default: 0.98 (tighten only)
@@ -249,8 +254,10 @@ function parseArgs(args) {
     sandbox: process.env.CODEX_SANDBOX_MODE ?? "unknown",
     network: "unknown",
     matchedRules: [],
-    model: DEFAULT_MODEL,
-    endpoint: DEFAULT_ENDPOINT,
+    model: null,
+    endpoint: null,
+    provider: null,
+    apiKeyEnv: null,
     timeoutSeconds: DEFAULT_TIMEOUT_MS / 1000,
     retries: 2,
     confidenceFloor: 0.98,
@@ -280,6 +287,8 @@ function parseArgs(args) {
       case "--matched-rule": options.matchedRules.push(need(index, arg)); index += 1; break;
       case "--model": options.model = need(index, arg); index += 1; break;
       case "--endpoint": options.endpoint = need(index, arg); index += 1; break;
+      case "--provider": options.provider = need(index, arg); index += 1; break;
+      case "--api-key-env": options.apiKeyEnv = need(index, arg); index += 1; break;
       case "--timeout": options.timeoutSeconds = Number(need(index, arg)); index += 1; break;
       case "--confidence-floor": options.confidenceFloor = Number(need(index, arg)); index += 1; break;
       case "--forbidden-ceiling": options.forbiddenCeiling = Number(need(index, arg)); index += 1; break;
@@ -382,6 +391,21 @@ export async function main(argv = process.argv.slice(2)) {
     return 2;
   }
 
+  if (!options.offline) {
+    // Fail fast on provider misconfiguration instead of at request time.
+    try {
+      resolveProvider({
+        provider: options.provider,
+        model: options.model,
+        endpoint: options.endpoint,
+        apiKeyEnv: options.apiKeyEnv,
+      });
+    } catch (error) {
+      console.error(`classify_command.mjs: ${error.message}`);
+      return 2;
+    }
+  }
+
   if (options.command && options.argv.length > 0) {
     console.error("classify_command.mjs: pass either --command or trailing argv, not both");
     return 2;
@@ -419,6 +443,8 @@ export async function main(argv = process.argv.slice(2)) {
         evaluate(state, questions, {
           model: options.model,
           endpoint: options.endpoint,
+          provider: options.provider,
+          apiKeyEnv: options.apiKeyEnv,
           timeoutMs: options.timeoutSeconds * 1000,
           retries: options.retries,
         }),

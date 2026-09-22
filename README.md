@@ -1,8 +1,9 @@
 # codex-jev-classifier-skills
 
-A portable [Agent Skill](skills/jev-command-classifier/SKILL.md) that classifies
-shell commands with JEV (TypeSafe `Choice`) and wires the verdict into Codex
-command approvals, plus the reference implementation and tests for it.
+A portable [Agent Skill](skills/jev-command-classifier/SKILL.md) and reference
+implementation that classifies shell commands with TypeSafe's JEV `Choice`.
+It emits a verdict for an approval wrapper or App Server client to consume;
+that integration is documented but not implemented in this repository.
 
 The classifier returns one of three decisions:
 
@@ -44,10 +45,14 @@ npx skills add <owner>/codex-jev-classifier-skills --skill jev-command-classifie
 
 ## Use the implementation
 
-Dependency-free in both languages, talking to the TypeSafe HTTP API directly.
-Python 3.9+ (stdlib only) or Node 18+ / Bun (ESM, no packages). The two
-implementations share `scripts/fixtures/cases.json` and produce identical
+Dependency-free in both languages, talking to the model provider's HTTP API
+directly. Python 3.9+ (stdlib only) or Node 18+ / Bun (ESM, no packages). The
+two implementations share `scripts/fixtures/cases.json` and produce identical
 decisions.
+
+A **TypeSafe JEV connection is required for real classification** (direct by
+default — create a key at https://console.typesafe.ai/keys). The
+`--self-test` and `--offline` modes need no key at all.
 
 ```bash
 export TYPESAFE_API_KEY=...   # https://console.typesafe.ai/keys
@@ -84,6 +89,61 @@ python3 skills/jev-command-classifier/scripts/classify_command.py \
 ```
 
 `--offline` is a wiring aid for tests, never a security control.
+
+## Configuration
+
+The classifier uses TypeSafe's JEV `Choice` model only. The default provider
+calls TypeSafe directly. Other providers are supported as trusted gateways
+that forward the System One API to TypeSafe JEV without substituting another
+model. Flags override environment variables.
+
+| Variable | Meaning |
+| --- | --- |
+| `JEV_PROVIDER` | `typesafe` (default) or `systemone-compatible` (trusted gateway) |
+| `JEV_ENDPOINT` | Override the provider endpoint URL |
+| `JEV_MODEL` | JEV model id beginning with `jev-` (default: `jev-latest`) |
+| `TYPESAFE_API_KEY` | Key for direct TypeSafe calls |
+| `JEV_API_KEY` | Key for a gateway; overrides the default key variable if set |
+
+The implementation rejects non-`jev-*` model IDs before making a request and
+rejects a response that names a different model family. A model-name check
+is not proof of provenance. You must trust the selected gateway to route to
+TypeSafe's real JEV model. The classifier never sends chat-completions
+messages or synthesizes probabilities from generated text.
+
+### Direct TypeSafe access
+
+```bash
+export TYPESAFE_API_KEY=...   # https://console.typesafe.ai/keys
+python3 skills/jev-command-classifier/scripts/classify_command.py -- git status --short
+```
+
+### Trusted gateway
+
+A gateway must accept the System One `POST` payload
+`{state, model, questions}` and return native typed `answers` with
+probabilities and confidence. OpenAI/OpenRouter chat-completions APIs and
+general-purpose LLM runtimes are not supported; asking them to emit JSON
+does not turn them into JEV.
+
+```bash
+export MY_GATEWAY_KEY=...
+python3 skills/jev-command-classifier/scripts/classify_command.py \
+  --provider systemone-compatible \
+  --endpoint https://gateway.internal.example/v1/systemone \
+  --api-key-env MY_GATEWAY_KEY \
+  -- git status --short
+```
+
+The JavaScript/Bun CLI accepts the same flags. For a trusted gateway that
+does not use bearer authentication, `--api-key-env none` omits the header.
+The clients refuse to send `TYPESAFE_API_KEY` to an override endpoint by
+default. Do not deliberately send it to an untrusted gateway.
+
+Before relying on a gateway, verify its actual upstream model and API
+contract. Then evaluate thresholds against a labeled command set per
+[skill references/evaluation.md](skills/jev-command-classifier/references/evaluation.md).
+A `jev-*` response name alone cannot establish the upstream model's identity.
 
 ## Development
 

@@ -30,9 +30,17 @@ from .client import (
     API_KEY_ENV,
     DEFAULT_ENDPOINT,
     DEFAULT_MODEL,
+    ENDPOINT_ENV,
+    GENERIC_KEY_ENV,
+    JEV_MODEL_PREFIX,
+    MODEL_ENV,
+    PROVIDER_ENV,
+    PROVIDERS,
     TypeSafeAuthError,
     TypeSafeError,
     evaluate,
+    resolve_provider,
+    validate_jev_model,
 )
 
 __all__ = [
@@ -42,8 +50,14 @@ __all__ = [
     "DECISION_RANK",
     "DEFAULT_ENDPOINT",
     "DEFAULT_MODEL",
+    "ENDPOINT_ENV",
     "FORBIDDEN",
+    "GENERIC_KEY_ENV",
+    "JEV_MODEL_PREFIX",
+    "MODEL_ENV",
     "PROBABILITY_SUM_TOLERANCE",
+    "PROVIDER_ENV",
+    "PROVIDERS",
     "PROMPT",
     "REDACTION_MASK",
     "TypeSafeAuthError",
@@ -56,7 +70,9 @@ __all__ = [
     "most_restrictive",
     "redact",
     "redact_argv",
+    "resolve_provider",
     "split_simple",
+    "validate_jev_model",
 ]
 
 __version__ = "0.1.0"

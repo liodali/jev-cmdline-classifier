@@ -146,6 +146,37 @@ test("tightened thresholds are accepted", async () => {
   assert.equal(JSON.parse(stdout).decision, "allow");
 });
 
+test("unreachable custom endpoint fails closed", async () => {
+  const { code, stdout } = await classify([
+    "--provider", "systemone-compatible",
+    "--endpoint", "http://127.0.0.1:9/v1/systemone",
+    "--api-key-env", "none",
+    "--",
+    "git", "status",
+  ]);
+  const result = JSON.parse(stdout);
+  assert.equal(result.decision, "prompt");
+  assert.equal(code, 3);
+  assert.match(result.reasons[0], /classifier failure/);
+});
+
+test("unknown provider is rejected", async () => {
+  const { code } = await classify(["--provider", "bogus", "--", "git", "status"]);
+  assert.equal(code, 2);
+});
+
+test("offline skips provider validation", async () => {
+  const { code } = await classify([
+    "--offline",
+    "--provider",
+    "systemone-compatible",
+    "--",
+    "git",
+    "status",
+  ]);
+  assert.equal(code, 0);
+});
+
 test("self-test passes", async () => {
   const { code, stdout } = await classify(["--self-test"]);
   assert.equal(code, 0);

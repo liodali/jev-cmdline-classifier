@@ -5,7 +5,9 @@ from __future__ import annotations
 import contextlib
 import io
 import json
+import os
 import unittest
+from unittest import mock
 
 from . import _paths  # noqa: F401
 
@@ -99,6 +101,33 @@ class OfflineCliTests(unittest.TestCase):
         )
         self.assertEqual(code, 0)
 
+    def test_unreachable_custom_endpoint_fails_closed(self):
+        # An unroutable endpoint must end in a fail-closed prompt (exit 3),
+        # never in a crash or an allow.
+        with mock.patch.dict(os.environ, {}, clear=True):
+            code, output = run_cli(
+                "--provider", "systemone-compatible",
+                "--endpoint", "http://127.0.0.1:9/v1/systemone",
+                "--api-key-env", "none",
+                "--",
+                "git", "status",
+            )
+        result = json.loads(output)
+        self.assertEqual(result["decision"], "prompt")
+        self.assertEqual(code, 3)
+        self.assertIn("classifier failure", result["reasons"][0])
+
+    def test_unknown_provider_is_rejected(self):
+        with self.assertRaises(SystemExit) as raised:
+            run_cli("--provider", "bogus", "--", "git", "status")
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_offline_skips_provider_validation(self):
+        code, output = run_cli(
+            "--offline", "--provider", "systemone-compatible", "--", "git", "status"
+        )
+        self.assertEqual(code, 0)
+
     def test_self_test_passes(self):
         code, output = run_cli("--self-test")
         self.assertEqual(code, 0)
@@ -141,6 +170,25 @@ class ClassifyCommandTests(unittest.TestCase):
             client_evaluate=lambda state, questions: self._answer("forbidden"),
         )
         self.assertEqual(record["decision"], "forbidden")
+
+    def test_non_jev_model_response_fails_closed(self):
+        response = self._answer("allow")
+        response["model"] = "gpt-4o"
+        record = classifier.classify_command(
+            ["git", "status"],
+            client_evaluate=lambda state, questions: response,
+        )
+        self.assertEqual(record["decision"], "prompt")
+        self.assertIn("classifier failure", record["reasons"][0])
+
+    def test_missing_model_response_fails_closed(self):
+        response = self._answer("allow")
+        del response["model"]
+        record = classifier.classify_command(
+            ["git", "status"], client_evaluate=lambda state, questions: response,
+        )
+        self.assertEqual(record["decision"], "prompt")
+        self.assertIn("classifier failure", record["reasons"][0])
 
     def test_classifier_failure_fails_closed_to_prompt(self):
         def boom(state, questions):

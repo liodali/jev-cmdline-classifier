@@ -82,6 +82,15 @@ rejects a lower `--confidence-floor` or higher `--forbidden-ceiling` than the
 production defaults. Validate thresholds on real command traffic before
 production use; see [references/evaluation.md](references/evaluation.md).
 
+TypeSafe is the default provider (`TYPESAFE_API_KEY`); only model IDs beginning
+with `jev-` are accepted (`jev-latest` by default, or a pinned JEV version).
+Other providers are supported only as trusted gateways that forward the
+System One request to TypeSafe JEV and return its native typed `Choice`
+response. Use `--provider systemone-compatible`, `--endpoint`, and
+`--api-key-env` (or their documented environment equivalents). A `jev-*`
+name is not proof of provenance; verify the gateway. Chat-completions
+providers and substituted general-purpose models are not supported.
+
 ## Learn from approvals
 
 - Accepted once: authorize only that exact invocation.

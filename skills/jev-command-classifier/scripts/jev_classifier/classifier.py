@@ -537,6 +537,12 @@ def classify_command(
             )
             try:
                 response = evaluate(state, {QUESTION_ID: COMMAND_QUESTION})
+                response_model = (
+                    response.get("model") if isinstance(response, Mapping) else None
+                )
+                from .client import validate_jev_model
+
+                validate_jev_model(response_model)
                 answer = (response.get("answers") or {}).get(QUESTION_ID) or {}
                 record = decide(
                     answer.get("choice"),
@@ -547,7 +553,7 @@ def classify_command(
                 record["choice"] = answer.get("choice")
                 record["confidence"] = answer.get("confidence")
                 record["probabilities"] = answer.get("probabilities")
-                record["model"] = response.get("model")
+                record["model"] = response_model
             except Exception as exc:  # noqa: BLE001 - fail closed on any failure
                 record = {
                     "decision": PROMPT,

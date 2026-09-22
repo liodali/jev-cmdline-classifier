@@ -1,3 +1,5 @@
+import { validateJevModel } from "./client.mjs";
+
 /**
  * JEV Choice question, state builder, hard-deny rules, and decision layer.
  *
@@ -514,6 +516,8 @@ export async function classifyCommand(
       });
       try {
         const response = await evaluateFn(state, { [QUESTION_ID]: COMMAND_QUESTION });
+        const responseModel = response?.model ?? null;
+        validateJevModel(responseModel);
         const answer = response?.answers?.[QUESTION_ID] ?? {};
         record = decide(
           answer.choice ?? null,
@@ -524,7 +528,7 @@ export async function classifyCommand(
         record.choice = answer.choice ?? null;
         record.confidence = answer.confidence ?? null;
         record.probabilities = answer.probabilities ?? null;
-        record.model = response?.model ?? null;
+        record.model = responseModel;
       } catch (error) {
         record = {
           decision: PROMPT,
