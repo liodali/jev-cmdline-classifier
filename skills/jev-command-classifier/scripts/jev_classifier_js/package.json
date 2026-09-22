@@ -1,0 +1,33 @@
+{
+  "name": "jev-command-classifier",
+  "version": "0.1.0",
+  "description": "Classify shell commands for Codex approvals with JEV (TypeSafe Choice) and a fail-closed decision layer.",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "jev-classify-js": "./cli.mjs"
+  },
+  "exports": {
+    ".": "./index.mjs"
+  },
+  "files": [
+    "cli.mjs",
+    "client.mjs",
+    "classifier.mjs",
+    "index.mjs"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "codex",
+    "jev",
+    "typesafe",
+    "agent-skills",
+    "execpolicy",
+    "approvals"
+  ]
+}

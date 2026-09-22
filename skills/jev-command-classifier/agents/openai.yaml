@@ -1,0 +1,7 @@
+interface:
+  display_name: "JEV Command Classifier"
+  short_description: "Classify shell commands into allow, prompt, or forbid"
+  default_prompt: "Use $jev-command-classifier to classify a command and wire the verdict into Codex approvals."
+
+policy:
+  allow_implicit_invocation: true

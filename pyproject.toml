@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jev-command-classifier"
+version = "0.1.0"
+description = "Classify shell commands for Codex approvals with JEV (TypeSafe Choice) and a fail-closed decision layer."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+keywords = ["codex", "jev", "typesafe", "agent-skills", "execpolicy", "approvals"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Security",
+]
+dependencies = []
+
+[project.scripts]
+jev-classify = "jev_classifier.cli:main"
+
+[tool.setuptools]
+# The implementation ships inside the skill so the skill stays self-contained.
+package-dir = { "" = "skills/jev-command-classifier/scripts" }
+packages = ["jev_classifier"]
